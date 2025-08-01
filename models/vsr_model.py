@@ -20,7 +20,7 @@ class VSRModel(nn.Module):
         # Girdisi 6 kanallı olacak: 
         #   - 3 kanal: Warp edilmiş geçmiş yüksek çözünürlüklü kare
         #   - 3 kanal: Mevcut düşük çözünürlüklü karenin kaba büyütülmüş hali
-        self.refiner = RefinerCNN(in_channels=6, num_features=64, num_blocks=4)
+        self.refiner = RefinerCNN(in_channels=9, num_features=64, num_blocks=4)
 
     def forward(self, low_res_current: torch.Tensor, high_res_previous: torch.Tensor, flow_prev_to_current: torch.Tensor):
         """
