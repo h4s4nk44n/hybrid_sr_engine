@@ -42,18 +42,22 @@ class VSRModel(nn.Module):
 
         # Adım 3: Mevcut 144p kareyi, bilinear enterpolasyon ile kaba bir şekilde 1080p'ye büyüt.
         upscaled_current = F.interpolate(low_res_current, scale_factor=self.scale_factor, mode='bilinear', align_corners=False)
-        
-        # Adım 4: Warp edilmiş geçmişi (3 kanal) ve kaba büyütülmüş mevcut kareyi (3 kanal) birleştir.
-        refiner_input = torch.cat([warped_history, upscaled_current], dim=1)
-        
+
+        # Re-upscale the LR input with nearest-neighbor to preserve sharp block artifacts
+        # This gives the RefinerCNN a clear signal of what to fix.
+        upscaled_artifacts = F.interpolate(low_res_current, scale_factor=self.scale_factor, mode='nearest')
+
+        # Concatenate all three tensors to create the 9-channel input
+        refiner_input = torch.cat([warped_history, upscaled_current, upscaled_artifacts], dim=1)
+
         # Adım 5: Birleştirilmiş tensörü, sadece "kusurları" düzeltmekle görevli RefinerCNN'e besle.
         # Modelden çıkan "artık" (residual), kaba görüntüdeki hataları düzeltmek için kullanılır.
         residual = self.refiner(refiner_input)
-        
+
         # Adım 6: Kaba büyütülmüş görüntüye bu "düzeltmeyi" ekleyerek nihai, temiz 1080p görüntüyü oluştur.
         final_output = upscaled_current + residual
-        
+
         # Çıktıyı [0, 1] aralığına sıkıştırarak (clamp) geçerli bir görüntü olduğundan emin olalım.
         final_output = torch.clamp(final_output, 0.0, 1.0)
 
-        return final_output```
+        return final_output

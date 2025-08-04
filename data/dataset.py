@@ -75,8 +75,23 @@ class TemporalFrameDataset(Dataset):
         imgs_lr = torch.stack([torch.from_numpy(im.astype(np.float32)).permute(2, 0, 1) / 255.0 for im in imgs_lr])
         
         # Akışları (C, H, W) formatına çevir
-        # Akışlar zaten düşük çözünürlükte olmalı, compute_flow'u LR görüntülerle çalıştırdıysanız.
-        # Eğer HR görüntülerle çalıştırdıysanız, burada resize etmeniz gerekebilir.
-        flows = torch.stack([torch.from_numpy(f.astype(np.float32)).permute(2, 0, 1) for f in flows])
+        processed_flows = []
+        for flow_hr in flows:
+            # The original flow was calculated on HR frames. We must downscale it
+            # to the LR resolution to simulate the inference-time condition.
+            B, H, W, C = 1, self.lr_h, self.lr_w, 2
+            flow_lr = cv2.resize(flow_hr, (W, H), interpolation=cv2.INTER_AREA)
+            
+            # When you resize a flow map, you must also scale the magnitude of the vectors.
+            # Original flow vectors were for a 1080p grid, now they are for a 144p grid.
+            hr_h, hr_w, _ = img_hr.shape # Get the actual HR shape
+            scale_h = H / hr_h
+            scale_w = W / hr_w
+            flow_lr[:, :, 0] = flow_lr[:, :, 0] * scale_w
+            flow_lr[:, :, 1] = flow_lr[:, :, 1] * scale_h
+            
+            processed_flows.append(torch.from_numpy(flow_lr.astype(np.float32)).permute(2, 0, 1))
+            
+        flows = torch.stack(processed_flows)
         
         return {"imgs_lr": imgs_lr, "imgs_hr": imgs_hr, "flows": flows}

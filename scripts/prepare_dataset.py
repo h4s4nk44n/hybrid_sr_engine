@@ -20,7 +20,7 @@ import numpy as np
 def process_frame_pair(args_tuple):
     """Worker function to compute optical flow for a single pair of frames."""
     prev_path, next_path, output_dir, algorithm = args_tuple
-    
+
     try:
         # Assumes filenames are like 'frame_00000001.png'
         prev_idx_str = os.path.splitext(os.path.basename(prev_path))[0].split('_')[-1]
@@ -28,7 +28,7 @@ def process_frame_pair(args_tuple):
         output_filename = f"flow_{int(prev_idx_str):08d}_{int(next_idx_str):08d}.npy"
     except (ValueError, IndexError):
         return ("failed", f"invalid filename format for {os.path.basename(prev_path)}")
-    
+
     output_path = os.path.join(output_dir, output_filename)
 
     if os.path.exists(output_path):
@@ -48,7 +48,7 @@ def process_frame_pair(args_tuple):
             flow = tvl1.calc(prev_gray, next_gray, None)
         else: # farneback
             flow = cv2.calcOpticalFlowFarneback(prev_gray, next_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-            
+
         np.save(output_path, flow)
         return ("success", output_path)
     except Exception as e:
@@ -58,7 +58,7 @@ def process_frame_pair(args_tuple):
 def main(args):
     """Master orchestrator for the entire data preparation pipeline."""
     print("--- Starting Full Dataset Preparation ---")
-    
+
     # 1. Find all video files
     print(f"Searching for videos in: {args.video_dir}")
     video_extensions = ('.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv')
@@ -79,9 +79,9 @@ def main(args):
     train_videos = source_videos[split_index:]
 
     print(f"Splitting dataset: {len(train_videos)} training videos, {len(val_videos)} validation videos.")
-    
+
     sets_to_process = [('train', train_videos), ('validation', val_videos)]
-    
+
     # Ensure root output directory exists
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -89,7 +89,7 @@ def main(args):
         if not video_list:
             print(f"Skipping empty '{set_name}' set.")
             continue
-            
+
         print(f"\n--- Processing '{set_name}' Set ({len(video_list)} videos) ---")
         set_output_dir = os.path.join(args.output_dir, set_name)
         os.makedirs(set_output_dir, exist_ok=True)
@@ -98,14 +98,14 @@ def main(args):
             # Create a clean, unique folder name for each video
             video_basename = f"video_{i:04d}_{os.path.splitext(os.path.basename(video_path))[0]}"
             video_frame_dir = os.path.join(set_output_dir, video_basename)
-            
+
             print(f"\n[{i+1}/{len(video_list)}] Processing Video: {os.path.basename(video_path)}")
             print(f"  -> Output directory: {video_frame_dir}")
 
             if os.path.exists(video_frame_dir) and not args.overwrite:
                 print("  -> Directory already exists and overwrite is False. Skipping.")
                 continue
-            
+
             os.makedirs(video_frame_dir, exist_ok=True)
 
             # 3. Extract frames using ffmpeg
@@ -131,7 +131,7 @@ def main(args):
                 continue
 
             flow_tasks = [(frame_files[j], frame_files[j+1], video_frame_dir, args.flow_algorithm) for j in range(len(frame_files) - 1)]
-            
+
             with Pool(processes=args.workers) as pool:
                 list(tqdm(pool.imap_unordered(process_frame_pair, flow_tasks), total=len(flow_tasks), desc="    Calculating Flow"))
 
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, default='data/frames', help="Root directory to save the final dataset (e.g., 'data/frames').")
     parser.add_argument('--val_split', type=float, default=0.1, help="Fraction of videos for validation (default: 0.1 for 10%).")
     parser.add_argument('--fps', type=int, default=30, help="Frames per second to extract.")
-    parser.add_gument('--flow_algorithm', type=str, default='tvl1', choices=['tvl1', 'farneback'], help="Optical flow algorithm. 'tvl1' is higher quality but slower.")
+    parser.add_argument('--flow_algorithm', type=str, default='tvl1', choices=['tvl1', 'farneback'], help="Optical flow algorithm. 'tvl1' is higher quality but slower.")
     parser.add_argument('--workers', type=int, default=cpu_count(), help=f"Number of CPU cores for parallel processing (default: {cpu_count()}).")
     parser.add_argument('--overwrite', action='store_true', help="If specified, overwrite existing video frame directories.")
     
