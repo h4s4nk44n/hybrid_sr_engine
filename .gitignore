@@ -1,3 +1,8 @@
 data/raw_videos/*
+!data/raw_videos/.gitignore
+
 data/frames/*
+!data/frames/.gitignore
+
 data/aligned/*
+!data/aligned/.gitignore
