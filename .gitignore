@@ -1,8 +1,10 @@
 data/raw_videos/*
-!data/raw_videos/.gitignore
+!data/raw_videos/.gitkeep
 
 data/frames/*
-!data/frames/.gitignore
+!data/frames/.gitkeep
 
 data/aligned/*
-!data/aligned/.gitignore
+!data/aligned/.gitkeep
+
+!data/aligned/.gitkeep
