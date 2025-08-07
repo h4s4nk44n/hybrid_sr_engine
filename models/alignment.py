@@ -14,13 +14,13 @@ def warp(image: torch.Tensor, flow: torch.Tensor) -> torch.Tensor:
         torch.Tensor: Hizalanmış görüntü. Shape: (B, C, H, W)
     """
     B, C, H, W = image.size()
-    
+
     # grid_sample için bir koordinat grid'i oluştur (normalleştirilmiş: -1 ile 1 arası)
     xx = torch.arange(0, W).view(1, -1).repeat(H, 1)
     yy = torch.arange(0, H).view(-1, 1).repeat(1, W)
     grid = torch.stack([xx, yy], dim=0).float()
     grid = grid.unsqueeze(0).repeat(B, 1, 1, 1)
-    
+
     # Grid'i görüntünün bulunduğu cihaza gönder
     grid = grid.to(image.device)
 
@@ -38,5 +38,5 @@ def warp(image: torch.Tensor, flow: torch.Tensor) -> torch.Tensor:
 
     # Warp işlemini gerçekleştir
     warped_image = F.grid_sample(image, new_grid, mode='bilinear', padding_mode='border', align_corners=True)
-    
+
     return warped_image

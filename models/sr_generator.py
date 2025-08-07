@@ -27,11 +27,11 @@ class RefinerCNN(nn.Module):
         super(RefinerCNN, self).__init__()
         # İlk katman: Girdi kanallarını (örn. 6) modelin çalışma kanallarına (örn. 64) çıkarır
         self.input_conv = nn.Conv2d(in_channels, num_features, kernel_size=3, padding=1)
-        
+
         # Artık bloklar
         blocks = [ResidualBlock(num_features) for _ in range(num_blocks)]
         self.residual_layers = nn.Sequential(*blocks)
-        
+
         # Çıktı katmanı: Modelin kanallarını (64) tekrar resim kanallarına (3) indirir
         self.output_conv = nn.Conv2d(num_features, 3, kernel_size=3, padding=1)
 
