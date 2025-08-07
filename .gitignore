@@ -6,5 +6,3 @@ data/frames/*
 
 data/aligned/*
 !data/aligned/.gitkeep
-
-!data/aligned/.gitkeep
