@@ -1,0 +1,35 @@
+# --- Pinned Requirements for VSR Project ---
+# This file specifies the exact versions of packages for guaranteed reproducibility.
+# Created based on a stable environment tested in late 2023.
+
+# Core Deep Learning and Data Handling
+# ------------------------------------
+# PyTorch 2.5.1 is compatible with CUDA 11.8.
+torch==2.5.1
+torchvision==0.20.1
+
+# NumPy 2.2.5 is a recent stable release.
+numpy==2.2.5
+
+# ONNX Runtime and Model Optimization
+# -----------------------------------
+# ONNX 1.18.0 is the standard.
+onnx==1.18.0
+
+# ONNX Runtime 1.22.0 has mature support for TensorRT on CUDA 11.8 and a stable API.
+onnxruntime-gpu==1.22.0
+onnxruntime-openvino==1.22.0
+# onnxruntime-directml==1.16.3 # (Optional) Uncomment if using DirectML.
+
+# Computer Vision and Image Processing
+# ------------------------------------
+# A recent stable version of OpenCV.
+opencv-python==4.10.0
+
+# LPIPS library for perceptual loss.
+lpips==0.1.4
+
+# Utilities
+# ---------
+# A standard version of tqdm for progress bars.
+tqdm==4.67.1

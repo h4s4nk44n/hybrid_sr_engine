@@ -1,6 +1,10 @@
+# export/export_onnx.py
 import os
 import argparse
 import torch
+import numpy as np
+import onnx
+import onnxruntime as ort # Import onnxruntime for verification
 import sys
 
 # Add project root to sys.path
@@ -25,8 +29,7 @@ def main(args):
         print(f"Error loading model: {e}")
         return
 
-    # 2. Create dummy inputs with the correct shapes
-    # These shapes must match what the model's forward() pass expects
+    # 2. Create dummy inputs
     lr_h = int(1080 / args.scale_factor)
     lr_w = int(1920 / args.scale_factor)
     
@@ -36,24 +39,24 @@ def main(args):
     
     dummy_input = (dummy_lr_current, dummy_hr_previous, dummy_flow)
 
-    # 3. Define input and output names for the ONNX graph
+    # 3. Define input and output names
     input_names = ["low_res_current", "high_res_previous", "flow_prev_to_current"]
     output_names = ["output_high_res"]
     
     # 4. Export the model
-    os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
+    # Ensure the output directory exists
+    output_dir = os.path.dirname(args.output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     
     try:
         print(f"Exporting to ONNX format at: {args.output_path}")
         torch.onnx.export(
-            model,
-            dummy_input,
-            args.output_path,
+            model, dummy_input, args.output_path,
             verbose=False,
-            input_names=input_names,
-            output_names=output_names,
-            opset_version=14, # A modern and stable opset version
-            dynamic_axes={ # Allows for variable batch size during inference
+            input_names=input_names, output_names=output_names,
+            opset_version=14,
+            dynamic_axes={
                 "low_res_current": {0: "batch_size"},
                 "high_res_previous": {0: "batch_size"},
                 "flow_prev_to_current": {0: "batch_size"},
@@ -62,19 +65,40 @@ def main(args):
         )
         print("ONNX export completed successfully.")
 
-        # (Optional) Verify the ONNX model
-        import onnx
+        # --- UPGRADE: Numerical Verification Step ---
+        print("\n--- Verifying ONNX Model ---")
+        
+        # 1. Structural Check
         onnx_model = onnx.load(args.output_path)
         onnx.checker.check_model(onnx_model)
-        print("ONNX model verification successful.")
+        print("Step 1/2: Structural check passed.")
+
+        # 2. Numerical Check
+        # Run inference with both models and compare the output
+        with torch.no_grad():
+            pytorch_output = model(*dummy_input).numpy()
+
+        ort_session = ort.InferenceSession(args.output_path)
+        ort_inputs = {
+            input_names[0]: dummy_lr_current.numpy(),
+            input_names[1]: dummy_hr_previous.numpy(),
+            input_names[2]: dummy_flow.numpy()
+        }
+        onnx_output = ort_session.run(None, ort_inputs)[0]
+
+        # Compare outputs. They should be very close.
+        np.testing.assert_allclose(pytorch_output, onnx_output, rtol=1e-3, atol=1e-5)
+        print("Step 2/2: Numerical check passed. PyTorch and ONNX outputs are close.")
+        print("\nONNX model verification successful.")
 
     except Exception as e:
-        print(f"An error occurred during ONNX export: {e}")
+        print(f"An error occurred during export or verification: {e}")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Export a trained VSR Generator to ONNX format.")
     parser.add_argument('--checkpoint_path', type=str, required=True, help="Path to the trained generator checkpoint (.pth file).")
-    parser.add_argument('--output_path', type=str, required=True, help="Path to save the output ONNX model (e.g., 'onnx_models/vsr_model.onnx').")
+    parser.add_argument('--output_path', type=str, required=True, help="Path to save the output ONNX model (e.g., 'onnx_models/vsr_model_fp32.onnx').")
     parser.add_argument('--scale_factor', type=float, default=7.5, help="The upscale factor the model was trained for.")
 
     args = parser.parse_args()
